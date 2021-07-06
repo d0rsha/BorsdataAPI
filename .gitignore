@@ -1,3 +1,4 @@
 borsdata/__pycache__
 .idea
 borsdata/constants.py
+file_exports/*
