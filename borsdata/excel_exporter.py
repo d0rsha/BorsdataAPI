@@ -18,12 +18,12 @@ class ExcelExporter:
 
     def create_excel_files(self):
         # looping through all instruments
-        for index, instrument in self._instruments.iterrows():
-            stock_prices = self._api.get_instrument_stock_prices(instrument['insId'])
-            reports_quarter, reports_year, reports_r12 = self._api.get_instrument_reports(instrument['insId'])
+        for insId, instrument in self._instruments.iterrows():
+            stock_prices = self._api.get_instrument_stock_prices(insId)
+            reports_quarter, reports_year, reports_r12 = self._api.get_instrument_reports(insId)
             # map the instruments market/country id (integer) to its string representation in the market/country-table
-            market = self._markets.loc[self._markets['id'] == instrument['marketId']]['name'].values[0].lower().replace(' ', '_')
-            country = self._countries.loc[self._countries['id'] == instrument['countryId']]['name'].values[0].lower().replace(' ', '_')
+            market = self._markets.loc[instrument['marketId']]['name'].lower().replace(' ', '_')
+            country = self._countries.loc[instrument['countryId']]['name'].lower().replace(' ', '_')
             export_path = constants.EXPORT_PATH + f"{dt.datetime.now().date()}/{country}/{market}/"
             instrument_name = instrument['name'].lower().replace(' ', '_')
             # creating necessary folders if they do not exist
