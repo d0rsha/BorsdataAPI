@@ -257,7 +257,7 @@ class BorsdataAPI:
         """
         url = "instruments/kpis/updated"
         json_data = self._call_api(url, self._get_base_params())
-        return pd.to_datetime(json_date["kpisCalcUpdated"])
+        return pd.to_datetime(json_data["kpisCalcUpdated"])
 
     def get_kpi_metadata(self):
         """
