@@ -24,8 +24,24 @@ class ExcelExporter:
             # map the instruments market/country id (integer) to its string representation in the market/country-table
             market = self._markets.loc[instrument['marketId']]['name'].lower().replace(' ', '_')
             country = self._countries.loc[instrument['countryId']]['name'].lower().replace(' ', '_')
-            export_path = constants.EXPORT_PATH + f"{dt.datetime.now().date()}/{country}/{market}/"
+            export_path = constants.EXPORT_PATH + f"{country}/{market}/"
             instrument_name = instrument['name'].lower().replace(' ', '_')
+            
+            # Add meta data sheet
+            meta_data = [
+            {
+            "insId": insId,
+            "ticker": instrument['ticker'],
+            "name": instrument_name,
+            "market": market,
+            "country": country,
+            "ohlcv_updated": stock_prices.index[0],
+            "reports_quarter_updated": reports_quarter.index[0],
+            "reports_r12_updated":  reports_r12.index[0],
+            "reports_year_updated":  reports_year.index[0],
+            }]
+            stock_meta = pd.DataFrame(meta_data)
+
             # creating necessary folders if they do not exist
             if not os.path.exists(export_path):
                 os.makedirs(export_path)
@@ -35,8 +51,13 @@ class ExcelExporter:
             reports_quarter.to_excel(excel_writer, 'reports_quarter')
             reports_year.to_excel(excel_writer, 'reports_year')
             reports_r12.to_excel(excel_writer, 'reports_r12')
+            stock_meta.to_excel(excel_writer, 'meta_data')
             excel_writer.save()
             print(f'Excel exported: {export_path + instrument_name + ".xlsx"}')
+
+        print(f'Set last update {dt.datetime.now().date()} in {constants.EXPORT_PATH + "last_update.txt"}')
+        with open(constants.EXPORT_PATH  + 'last_update.txt', "w") as f:
+            f.write(f'{dt.datetime.now().date()}')
 
 
 if __name__ == "__main__":
