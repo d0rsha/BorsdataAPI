@@ -1,2 +1,3 @@
 borsdata/__pycache__
 .idea
+borsdata/constants.py
