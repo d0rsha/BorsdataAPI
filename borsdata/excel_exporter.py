@@ -55,13 +55,17 @@ class ExcelExporter:
             stock_meta.to_excel(excel_writer, 'meta_data')
             excel_writer.save()
             print(f'Excel exported: {export_path + instrument_name + ".xlsx"}')
-    
+
         meta = pd.concat(stocks_meta, axis=0, ignore_index=True)
         # creating the writer with export location
-        excel_writer = pd.ExcelWriter(constants.EXPORT_PATH + "updated.xlsx")
+        excel_writer = pd.ExcelWriter(constants.EXPORT_PATH + "last_update.xlsx")
         meta.to_excel(excel_writer, 'Updated timestamps')
         excel_writer.save()
         print(f'Excel exported: {constants.EXPORT_PATH + "updated.xlsx"}')
+
+        print(f'Set last update {dt.datetime.now().date()} in {constants.EXPORT_PATH + "last_update.txt"}')
+        with open(constants.EXPORT_PATH  + 'last_update.txt', "w") as f:
+            f.write(f'{dt.datetime.now().date()}')
 
 
 if __name__ == "__main__":

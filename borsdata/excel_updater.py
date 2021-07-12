@@ -20,26 +20,28 @@ class ExcelUpdater:
         self.dates = [last_prices.index[0]]
         self.last_prices.reset_index(inplace=True)
         self._api.set_index(self.last_prices, ['date', 'insId'], ascending=False)
-        
+        with open(constants.EXPORT_PATH  + 'last_update.txt', "r") as f:
+            self.last_update = f.readlines()[0]
+
 
     def read_file(self, root, file):
         print("Load " + os.path.join(root, file))
 
-        stock_prices = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name=constants.SHEET_STOCK_PRICES, index_col=0)
-        reports_quarter = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name=constants.SHEET_REPORTS_Q)
+        stock_prices = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='stock_prices', index_col=0)
+        reports_quarter = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='reports_quarter')
         reports_quarter.fillna(method='ffill', axis=0, inplace=True)
         reports_quarter['year'] = pd.to_numeric(reports_quarter['year'], downcast='integer')
         self._api._set_index(reports_quarter, ['year', 'period'], ascending=False)
 
-        reports_year = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name=constants.SHEET_REPORTS_Y)
+        reports_year = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='reports_year')
         reports_year['year'] = pd.to_numeric(reports_year['year'], downcast='integer')
 
-        reports_r12 = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name=constants.SHEET_REPORTS_R12)
+        reports_r12 = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='reports_r12')
         reports_r12.fillna(method='ffill', axis=0, inplace=True)
         self._api._set_index(reports_r12, ['year', 'period'], ascending=False)
         reports_r12['year'] = pd.to_numeric(reports_r12['year'], downcast='integer')
 
-        stock_meta = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name=constants.SHEET_META_DATA, index_col=0)
+        stock_meta = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='meta_data', index_col=0)
 
         return stock_prices, reports_quarter, reports_year, reports_r12, stock_meta
 
@@ -55,6 +57,12 @@ class ExcelUpdater:
     def update_excel_files(self):
         path = os.getcwd() + "\\" + self._file_path
 
+        # get last updated at 
+        old_update_date = self.last_update
+        new_update_date = self.dates[0]
+
+        if (old_update_date == new_update_date): 
+            return
         for root, dirs, files in os.walk(path):
             for file in files:
                 if file.endswith(".xlsx"):
