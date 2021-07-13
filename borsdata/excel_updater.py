@@ -22,7 +22,7 @@ class ExcelUpdater:
         self._api._set_index(self.last_prices, ['date', 'insId'], ascending=False)
         with open(constants.EXPORT_PATH  + 'last_update.txt', "r") as f:
             self.last_update = f.readlines()[0]
-        self.last_update = pd.to_datetime(last_update)
+        self.last_update = pd.to_datetime(self.last_update)
         self.new_update = self.dates[0]
 
 
@@ -95,8 +95,10 @@ class ExcelUpdater:
                     daterange = daterange[1:]
 
                     for date in daterange:
-                        stock_prices.loc[date] = get_date_stock_price(date, insId)
-
+                        stock_prices.loc[date] = self.get_date_stock_price(date, insId)
+                    
+                    stock_prices.sort_index(inplace=True, ascending=False)
+                    
                     stock_meta['ohlcv_updated'] = self.new_update
                     self.excel_export(stock_prices, reports_quarter, reports_year, reports_r12, stock_meta)
 
