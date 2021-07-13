@@ -16,12 +16,13 @@ class ExcelUpdater:
     def __init__(self):
         self._api = BorsdataAPI(constants.API_KEY)
         self._file_path = constants.EXPORT_PATH
-        self.last_prices = _api.get_instruments_stock_prices_last()
-        self.dates = [last_prices.index[0]]
+        self.last_prices = self._api.get_instruments_stock_prices_last()
+        self.dates = [self.last_prices.index[0]]
         self.last_prices.reset_index(inplace=True)
-        self._api.set_index(self.last_prices, ['date', 'insId'], ascending=False)
+        self._api._set_index(self.last_prices, ['date', 'insId'], ascending=False)
         with open(constants.EXPORT_PATH  + 'last_update.txt', "r") as f:
             self.last_update = f.readlines()[0]
+        self.new_update = self.dates[0]
 
 
     def read_file(self, root, file):
@@ -46,51 +47,68 @@ class ExcelUpdater:
         return stock_prices, reports_quarter, reports_year, reports_r12, stock_meta
 
     def get_date_stock_price(self, date, insId):
-
         if dates.__contains__(date) == False:
             self.last_prices = self.last_prices.append(self._api.get_stock_prices_date(date))
             self.dates.append(date)
         
         return self.last_prices.loc[(date, insId)]
         
+    def excel_export(self, stock_prices, reports_quarter, reports_year, reports_r12, stock_meta, ):
+        export_path = constants.EXPORT_PATH + f"{stock_meta['country']}/{stock_meta['market']}/"
+
+        # creating path if not exists
+        if not os.path.exists(export_path):
+            os.makedirs(export_path)
+
+        # creating the writer with export location
+        excel_writer = pd.ExcelWriter(export_path + stock_meta['name'] + ".xlsx")
+        stock_prices.to_excel(excel_writer, 'stock_prices')
+        reports_quarter.to_excel(excel_writer, 'reports_quarter')
+        reports_year.to_excel(excel_writer, 'reports_year')
+        reports_r12.to_excel(excel_writer, 'reports_r12')
+        stock_meta.to_excel(excel_writer, 'meta_data')
+        excel_writer.save()
+        print(f"Excel exported: {export_path + stock_meta['name'] + '.xlsx'}")
 
     def update_excel_files(self):
         path = os.getcwd() + "\\" + self._file_path
 
         # get last updated at 
         old_update_date = self.last_update
-        new_update_date = self.dates[0]
+        new_update_date = self.new_update
 
         if (old_update_date == new_update_date): 
             return
         for root, dirs, files in os.walk(path):
             for file in files:
-                if file.endswith(".xlsx"):
+                if file.endswith('.xlsx'):
                     stock_prices, reports_quarter, reports_year, reports_r12, stock_meta = self.read_file(root, file)
 
                     insId = stock_meta['insId'][0]
 
-                    # ToDo 
-
-                    # get last updated at 
-                    old_update_date = stock_prices.index[0]
-                    new_update_date = self.dates[0]
-
                     # Compare, get weekdays to add 
                     daterange = pd.date_range(old_update_date, new_update_date, freq='D').to_series()
                     daterange = daterange[daterange.dt.dayofweek.isin([0, 1, 2, 3, 4])]
+
                     # Remove first date, we already got it
                     daterange = daterange[1:]
 
                     for date in daterange:
                         stock_prices[date] = get_date_stock_price(insId, date)
 
+                    stock_meta['ohlcv_updated'] = new_update_date
+                    self.excel_export(stock_prices, reports_quarter, reports_year, reports_r12, stock_meta)
+
+        print(f"Set last update {new_update_date} in {constants.EXPORT_PATH + 'last_update.txt'}")
+        with open(constants.EXPORT_PATH  + 'last_update.txt', "w") as f:
+            f.write(f'{new_update_date}')
+                    
 
 
 
 
 if __name__ == "__main__":
     excel = ExcelUpdater()
-    stock_prices, reports_quater, reports_year, reports_r12 = excel.create_excel_files()
+    excel.update_excel_files()
     
     
