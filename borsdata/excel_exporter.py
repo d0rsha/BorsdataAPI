@@ -21,14 +21,25 @@ class ExcelExporter:
     def create_excel_files(self):
         # looping through all instruments
         for insId, instrument in self._instruments.iterrows():
-            stock_prices = self._api.get_instrument_stock_prices(insId)
-            reports_quarter, reports_year, reports_r12 = self._api.get_instrument_reports(insId)
             # map the instruments market/country id (integer) to its string representation in the market/country-table
             market = self._markets.loc[instrument['marketId']]['name'].lower().replace(' ', '_')
             country = self._countries.loc[instrument['countryId']]['name'].lower().replace(' ', '_')
             export_path = constants.EXPORT_PATH + f"{country}/{market}/"
             instrument_name = instrument['name'].lower().replace(' ', '_')
+            
+            if os.path.isfile(f'{export_path + instrument_name + ".xlsx"}'):
+                print(f'Skipping file: {export_path + instrument_name + ".xlsx"}')
+                continue
+            
+            
+            stock_prices = self._api.get_instrument_stock_prices(insId)
+            reports_quarter, reports_year, reports_r12 = self._api.get_instrument_reports(insId)
+            
             next_report_date = self.next_report_dates.loc[insId].valueStr
+            ohlcv_updated = stock_prices.index[0] if not stock_prices.empty  else None
+            reports_quarter_updated = reports_quarter.index[0] if not reports_quarter.empty  else None
+            reports_r12_updated = reports_r12.index[0] if not reports_r12.empty  else None
+            reports_year_updated = reports_year.index[0] if not reports_year.empty  else None
             
             # Add meta data sheet
             meta_data = [
@@ -48,10 +59,10 @@ class ExcelExporter:
             "listingDate": instrument['listingDate'],
             "market": market,
             "country": country,
-            "ohlcv_updated": stock_prices.index[0],
-            "reports_quarter_updated": reports_quarter.index[0],
-            "reports_r12_updated":  reports_r12.index[0],
-            "reports_year_updated":  reports_year.index[0],
+            "ohlcv_updated": ohlcv_updated,
+            "reports_quarter_updated": reports_quarter_updated,
+            "reports_r12_updated":  reports_r12_updated,
+            "reports_year_updated":  reports_year_updated,
             }]
             stock_meta = pd.DataFrame(meta_data)
 
