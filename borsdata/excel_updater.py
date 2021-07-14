@@ -24,11 +24,11 @@ class ExcelUpdater:
             self.last_update = f.readlines()[0]
         self.last_update = pd.to_datetime(self.last_update)
         self.new_update = self.dates[0]
+        self.next_report_dates = pd.DataFrame()
 
 
     def read_file(self, root, file):
-        print("Load " + os.path.join(root, file))
-
+        # print("Load " + os.path.join(root, file))
         stock_prices = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='stock_prices', index_col=0)
         reports_quarter = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='reports_quarter')
         reports_quarter.fillna(method='ffill', axis=0, inplace=True)
@@ -44,8 +44,8 @@ class ExcelUpdater:
         self._api._set_index(reports_r12, ['year', 'period'], ascending=False)
 
         stock_meta = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='meta_data', index_col=0)
-
         return stock_prices, reports_quarter, reports_year, reports_r12, stock_meta
+
 
     def get_date_stock_price(self, date, insId):
         if self.dates.__contains__(date) == False:
@@ -57,14 +57,13 @@ class ExcelUpdater:
 
         return self.last_prices.loc[(date, insId)]
         
+
     def excel_export(self, stock_prices, reports_quarter, reports_year, reports_r12, stock_meta, ):
         export_path = constants.EXPORT_PATH + f"{stock_meta['country'].loc[0]}/{stock_meta['market'].loc[0]}/"
 
-        # creating path if not exists
         if not os.path.exists(export_path):
             os.makedirs(export_path)
 
-        # creating the writer with export location
         excel_writer = pd.ExcelWriter(export_path + stock_meta['name'].loc[0] + ".xlsx")
         stock_prices.to_excel(excel_writer, 'stock_prices')
         reports_quarter.to_excel(excel_writer, 'reports_quarter')
@@ -72,12 +71,14 @@ class ExcelUpdater:
         reports_r12.to_excel(excel_writer, 'reports_r12')
         stock_meta.to_excel(excel_writer, 'meta_data')
         excel_writer.save()
-        print(f"Excel exported: {export_path + stock_meta['name'].loc[0] + '.xlsx'}")
+        print(f"Excel updated: {export_path + stock_meta['name'].loc[0] + '.xlsx'}")
+
 
     def update_excel_files(self):
         path = os.getcwd() + "\\" + self._file_path
 
-        if (self.last_update >= self.new_update): 
+        if (self.last_update >= self.new_update):
+            print(f"No need to update, latest update date: {self.new_update}")
             return
         for root, dirs, files in os.walk(path):
             for file in files:
@@ -85,8 +86,10 @@ class ExcelUpdater:
                     stock_prices, reports_quarter, reports_year, reports_r12, stock_meta = self.read_file(root, file)
 
                     insId = stock_meta['insId'][0]
+                    wasUpdated = False
 
-                    # Compare, get weekdays to add 
+                    ##############################
+                    # Check and Update last price
                     start_date = self.last_update if (self.last_update > stock_prices.index[0]) else stock_prices.index[0]
                     daterange = pd.date_range(start_date, self.new_update, freq='D').to_series()
                     daterange = daterange[daterange.dt.dayofweek.isin([0, 1, 2, 3, 4])]
@@ -96,11 +99,36 @@ class ExcelUpdater:
 
                     for date in daterange:
                         stock_prices.loc[date] = self.get_date_stock_price(date, insId)
-                    
+                        wasUpdated = True
+
                     stock_prices.sort_index(inplace=True, ascending=False)
-                    
                     stock_meta['ohlcv_updated'] = self.new_update
-                    self.excel_export(stock_prices, reports_quarter, reports_year, reports_r12, stock_meta)
+
+                    ##############################
+                    # Check and Update last report 
+                    next_report = pd.to_datetime(stock_meta['nextReport'][0])
+                    update = (next_report < self.new_update) if next_report else False
+
+                    if update:
+                        # We just need the very last updated report
+                        reports_quarter_updated, reports_year_updated, reports_r12_updated = self._api.get_instrument_reports(insId, 1, 1)
+
+                        if self.next_report_dates.empty:
+                            self.next_report_dates = self._api.get_kpi_data_all_instruments(201, 'last', 'latest')
+
+                        if not reports_quarter_updated.index[0] in reports_quarter.index:
+                            reports_quarter = pd.concat([reports_quarter_updated, reports_quarter])
+                        if not reports_year_updated.index[0] in reports_year.index:
+                            reports_year = pd.concat([reports_year_updated, reports_year])
+                        if not reports_r12_updated.index[0] in reports_r12.index:
+                            reports_r12 = pd.concat([reports_r12_updated, reports_r12])
+
+                        next_report_date = self.next_report_dates.loc[insId].valueStr
+                        stock_meta['nextReport'] = pd.to_datetime(next_report_date)
+                        wasUpdated = True
+
+                    if wasUpdated:
+                        self.excel_export(stock_prices, reports_quarter, reports_year, reports_r12, stock_meta)
 
         print(f"Set last update {self.new_update} in {constants.EXPORT_PATH + 'last_update.txt'}")
         with open(constants.EXPORT_PATH  + 'last_update.txt', "w") as f:
