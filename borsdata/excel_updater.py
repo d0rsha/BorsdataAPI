@@ -24,6 +24,8 @@ class ExcelUpdater:
             self.last_update = f.readlines()[0]
         self.last_update = pd.to_datetime(self.last_update)
         self.new_update = self.dates[0]
+        self.next_report_dates = pd.DataFrame()
+
 
 
     def read_file(self, root, file):
@@ -86,7 +88,8 @@ class ExcelUpdater:
 
                     insId = stock_meta['insId'][0]
 
-                    # Compare, get weekdays to add 
+                    ##############################
+                    # Check and Update last price
                     start_date = self.last_update if (self.last_update > stock_prices.index[0]) else stock_prices.index[0]
                     daterange = pd.date_range(start_date, self.new_update, freq='D').to_series()
                     daterange = daterange[daterange.dt.dayofweek.isin([0, 1, 2, 3, 4])]
@@ -98,8 +101,30 @@ class ExcelUpdater:
                         stock_prices.loc[date] = self.get_date_stock_price(date, insId)
                     
                     stock_prices.sort_index(inplace=True, ascending=False)
-                    
                     stock_meta['ohlcv_updated'] = self.new_update
+
+                    ##############################
+                    # Check and Update last report 
+                    next_report = pd.to_datetime(stock_meta['nextReport'][0])
+                    update = (next_report < self.new_update) if next_report else False
+
+                    if update:
+                        reports_quarter_updated, reports_year_updated, reports_r12_updated = self._api.get_instrument_reports(insId, 1, 1)
+
+                        if self.next_report_dates.empty:
+                            self.next_report_dates = self._api.get_kpi_data_all_instruments(201, 'last', 'latest')
+
+                        if not reports_quarter_updated.index[0] in reports_quarter.index:
+                            reports_quarter = pd.concat([reports_quarter_updated, reports_quarter])
+                        if not reports_year_updated.index[0] in reports_year.index:
+                            reports_year = pd.concat([reports_year_updated, reports_year])
+                        if not reports_r12_updated.index[0] in reports_r12.index:
+                            reports_r12 = pd.concat([reports_r12_updated, reports_r12])
+
+                        next_report_date = self.next_report_dates.loc[insId].valueStr
+                        stock_meta['nextReport'] = pd.to_datetime(next_report_date)
+                        
+
                     self.excel_export(stock_prices, reports_quarter, reports_year, reports_r12, stock_meta)
 
         print(f"Set last update {self.new_update} in {constants.EXPORT_PATH + 'last_update.txt'}")

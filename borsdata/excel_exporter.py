@@ -15,6 +15,8 @@ class ExcelExporter:
         self._instruments = self._api.get_instruments()
         self._markets = self._api.get_markets()
         self._countries = self._api.get_countries()
+        # Add next report date 
+        self.next_report_dates = self._api.get_kpi_data_all_instruments(201, 'last', 'latest')
 
     def create_excel_files(self):
         # looping through all instruments
@@ -26,13 +28,24 @@ class ExcelExporter:
             country = self._countries.loc[instrument['countryId']]['name'].lower().replace(' ', '_')
             export_path = constants.EXPORT_PATH + f"{country}/{market}/"
             instrument_name = instrument['name'].lower().replace(' ', '_')
+            next_report_date = self.next_report_dates.loc[insId].valueStr
             
             # Add meta data sheet
             meta_data = [
             {
             "insId": insId,
-            "ticker": instrument['ticker'],
             "name": instrument_name,
+            "nextReport": pd.to_datetime(next_report_date),
+            "urlName": instrument['urlName'],
+            "instrument": instrument['instrument'],
+            "isin": instrument['isin'],
+            "ticker": instrument['ticker'],
+            "yahoo": instrument['yahoo'],
+            "sectorId": instrument['sectorId'],
+            "marketId": instrument['marketId'],
+            "branchId": instrument['branchId'],
+            "countryId": instrument['countryId'],
+            "listingDate": instrument['listingDate'],
             "market": market,
             "country": country,
             "ohlcv_updated": stock_prices.index[0],
