@@ -15,22 +15,22 @@ class ExcelExporter:
         self._instruments = self._api.get_instruments()
         self._markets = self._api.get_markets()
         self._countries = self._api.get_countries()
-        # Add next report date 
+        # Get report next date for all instruments 
         self.next_report_dates = self._api.get_kpi_data_all_instruments(201, 'last', 'latest')
 
+
     def create_excel_files(self):
-        # looping through all instruments
+        # loop through all instruments
         for insId, instrument in self._instruments.iterrows():
-            # map the instruments market/country id (integer) to its string representation in the market/country-table
             market = self._markets.loc[instrument['marketId']]['name'].lower().replace(' ', '_')
             country = self._countries.loc[instrument['countryId']]['name'].lower().replace(' ', '_')
             export_path = constants.EXPORT_PATH + f"{country}/{market}/"
             instrument_name = instrument['name'].lower().replace(' ', '_')
             
+            # Skip files that already exists, in case we abort the script we can re-run the script to continue where we stopped 
             if os.path.isfile(f'{export_path + instrument_name + ".xlsx"}'):
                 print(f'Skipping file: {export_path + instrument_name + ".xlsx"}')
                 continue
-            
             
             stock_prices = self._api.get_instrument_stock_prices(insId)
             reports_quarter, reports_year, reports_r12 = self._api.get_instrument_reports(insId)
@@ -41,7 +41,7 @@ class ExcelExporter:
             reports_r12_updated = reports_r12.index[0] if not reports_r12.empty  else None
             reports_year_updated = reports_year.index[0] if not reports_year.empty  else None
             
-            # Add meta data sheet
+            # Meta data sheet
             meta_data = [
             {
             "insId": insId,
@@ -69,7 +69,8 @@ class ExcelExporter:
             # creating necessary folders if they do not exist
             if not os.path.exists(export_path):
                 os.makedirs(export_path)
-            # creating the writer with export location
+
+            # create the writer with export location
             excel_writer = pd.ExcelWriter(export_path + instrument_name + ".xlsx")
             stock_prices.to_excel(excel_writer, 'stock_prices')
             reports_quarter.to_excel(excel_writer, 'reports_quarter')
