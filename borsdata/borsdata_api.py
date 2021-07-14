@@ -236,7 +236,7 @@ class BorsdataAPI:
         """
         Get KPI data for all instruments
         :param kpi_id: KPI ID
-        :param calc_group: ['1year', '3year', '5year', '7year', '10year', '15year']
+        :param calc_group: ['last', '1year', '3year', '5year', '7year', '10year', '15year']
         :param calc: ['high', 'latest', 'mean', 'low', 'sum', 'cagr']
         :return: pd.DataFrame
         """
