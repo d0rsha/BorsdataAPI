@@ -27,44 +27,30 @@ class ExcelUpdater:
         self.next_report_dates = pd.DataFrame()
 
 
-    def get_empty_reports_df(self):
-        column_names = [
-                   'year', 'period', 'revenues', 'grossIncome', 'operatingIncome', 'profitBeforeTax', 'profitToEquityHolders', \
-                   'earningsPerShare', 'numberOfShares', 'dividend', 'intangibleAssets', 'tangibleAssets', \
-                   'financialAssets', 'nonCurrentAssets', 'cashAndEquivalents', 'currentAssets', 'totalAssets', \
-                   'totalEquity', 'nonCurrentLiabilities', 'currentLiabilities', 'totalLiabilitiesAndEquity', \
-                   'netDebt', 'cashFlowFromOperatingActivities', 'cashFlowFromInvestingActivities', \
-                   'cashFlowFromFinancingActivities', 'cashFlowForTheYear', 'freeCashFlow', 'stockPriceAverage', \
-                   'stockPriceHigh', 'stockPriceLow', 'reportStartDate', 'reportEndDate', 'brokenFiscalYear', \
-                   'currency', 'currencyRatio', 'netSales', 'reportDate']
-        df = pd.DataFrame(columns = column_names)
-        return df
-    
-
     def read_file(self, root, file):
         # print("Load " + os.path.join(root, file))
         stock_prices = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='stock_prices', index_col=0)
         reports_quarter = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='reports_quarter')
         if reports_quarter.empty:
             print(f'Warning: File {os.path.join(root, file)} is missing reports_quarter')
-            reports_quarter = self.get_empty_reports_df()
-        reports_quarter.fillna(method='ffill', axis=0, inplace=True)
-        reports_quarter['year'] = pd.to_numeric(reports_quarter['year'], downcast='integer')
-        self._api._set_index(reports_quarter, ['year', 'period'], ascending=False)
+        else:
+            reports_quarter.fillna(method='ffill', axis=0, inplace=True)
+            reports_quarter['year'] = pd.to_numeric(reports_quarter['year'], downcast='integer')
+            self._api._set_index(reports_quarter, ['year', 'period'], ascending=False)
 
         reports_year = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='reports_year')
         if reports_year.empty:
             print(f'Warning: File {os.path.join(root, file)} is missing reports_year')
-            reports_year = self.get_empty_reports_df()
-        reports_year['year'] = pd.to_numeric(reports_year['year'], downcast='integer')
+        else:
+            reports_year['year'] = pd.to_numeric(reports_year['year'], downcast='integer')
 
         reports_r12 = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='reports_r12')
         if reports_r12.empty:
             print(f'Warning: File {os.path.join(root, file)} is missing reports_r12')
-            reports_r12 = self.get_empty_reports_df()
-        reports_r12.fillna(method='ffill', axis=0, inplace=True)
-        reports_r12['year'] = pd.to_numeric(reports_r12['year'], downcast='integer')
-        self._api._set_index(reports_r12, ['year', 'period'], ascending=False)
+        else:
+            reports_r12.fillna(method='ffill', axis=0, inplace=True)
+            reports_r12['year'] = pd.to_numeric(reports_r12['year'], downcast='integer')
+            self._api._set_index(reports_r12, ['year', 'period'], ascending=False)
 
         stock_meta = pd.read_excel(open(os.path.join(root, file), 'rb'), sheet_name='meta_data', index_col=0)
         return stock_prices, reports_quarter, reports_year, reports_r12, stock_meta
@@ -87,6 +73,7 @@ class ExcelUpdater:
         if not os.path.exists(export_path):
             os.makedirs(export_path)
 
+        # Bug: Cant call to_excel(..) with df containing columns but 0 rows https://github.com/pandas-dev/pandas/issues/19543
         excel_writer = pd.ExcelWriter(export_path + stock_meta['name'].loc[0] + ".xlsx")
         stock_prices.to_excel(excel_writer, 'stock_prices')
         reports_quarter.to_excel(excel_writer, 'reports_quarter')
