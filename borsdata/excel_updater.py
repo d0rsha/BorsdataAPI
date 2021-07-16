@@ -130,7 +130,8 @@ class ExcelUpdater:
                     ##############################
                     # Check and Update last report 
                     next_report = pd.to_datetime(stock_meta['nextReport'][0])
-                    update = (next_report < self.new_update) if next_report else False
+                    next_report_plus_delta = next_report + pd.Timedelta("10 days")
+                    update = (self.new_update > next_report_plus_delta) if next_report else False
 
                     if update:
                         # We just need the very last updated report
