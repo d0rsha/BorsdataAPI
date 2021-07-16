@@ -80,9 +80,12 @@ class ExcelExporter:
             excel_writer.save()
             print(f'Excel exported: {export_path + instrument_name + ".xlsx"}')
 
-        print(f'Set last update {dt.datetime.now().date()} in {constants.EXPORT_PATH + "last_update.txt"}')
+        # Today date may not be last updated date, last_prices sorted by date
+        df_last_prices = self._api.get_instruments_stock_prices_last()
+        last_updated = pd.to_datetime(df_last_prices.index[0])
+        print(f'Set last update {last_updated} in {constants.EXPORT_PATH + "last_update.txt"}')
         with open(constants.EXPORT_PATH  + 'last_update.txt', "w") as f:
-            f.write(f'{dt.datetime.now().date()}')
+            f.write(f'{last_updated}')
 
 
 if __name__ == "__main__":
