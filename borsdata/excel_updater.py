@@ -139,11 +139,11 @@ class ExcelUpdater:
                         if self.next_report_dates.empty:
                             self.next_report_dates = self._api.get_kpi_data_all_instruments(201, 'last', 'latest')
 
-                        if not reports_quarter_updated.index[0] in reports_quarter.index:
+                        if not reports_quarter_updated.empty and not reports_quarter_updated.index[0] in reports_quarter.index:
                             reports_quarter = pd.concat([reports_quarter_updated, reports_quarter])
-                        if not reports_year_updated.index[0] in reports_year.index:
+                        if not reports_year_updated.empty and not reports_year_updated.index[0] in reports_year.index:
                             reports_year = pd.concat([reports_year_updated, reports_year])
-                        if not reports_r12_updated.index[0] in reports_r12.index:
+                        if not reports_r12_updated.empty and not reports_r12_updated.index[0] in reports_r12.index:
                             reports_r12 = pd.concat([reports_r12_updated, reports_r12])
 
                         next_report_date = self.next_report_dates.loc[insId].valueStr
